@@ -48,6 +48,9 @@ public class JTATest extends TestUtils implements Test {
         // Test thresholds
         long warning, critical;
 
+        // PMI stats
+        WSStats stats;
+
         // Performance data
         long activeCount;
 
@@ -57,28 +60,28 @@ public class JTATest extends TestUtils implements Test {
         critical = Long.parseLong(thresholds[2]);
 
         try {
-            WSStats stats = proxy.getStats(WSJTAStats.NAME);
-            try {
-                // PMI stats
-                activeCount = ((WSCountStatistic)stats.getStatistic(WSJTAStats.ActiveCount)).getCount();
-            } catch (NullPointerException e) {
-                throw new RuntimeException("invalid 'Transaction Manager' PMI settings.");
-            }
-
-            // Test output (Nagios performance data)
-            result.setOutput("jta-activeCount=" + activeCount);
-
-            // Test return code
-            code = checkResult(activeCount, critical, warning);
-
-            if (code == Status.WARNING.getCode() || code == Status.CRITICAL.getCode()) {
-                result.setMessage("transaction active count (" + activeCount + ")");
-            }
+            stats = proxy.getStats(WSJTAStats.NAME);
         } catch (Exception e) {
             e.printStackTrace();
             result.setStatus(Status.UNKNOWN);
             result.setMessage(e.toString());
             return result;
+        }
+
+        try {
+            activeCount = ((WSCountStatistic)stats.getStatistic(WSJTAStats.ActiveCount)).getCount();
+        } catch (NullPointerException e) {
+            throw new RuntimeException("invalid 'Transaction Manager' PMI settings.");
+        }
+
+        // Test output (Nagios performance data)
+        result.setOutput("jta-activeCount=" + activeCount);
+
+        // Test return code
+        code = checkResult(activeCount, critical, warning);
+
+        if (code == Status.WARNING.getCode() || code == Status.CRITICAL.getCode()) {
+            result.setMessage("transaction active count (" + activeCount + ")");
         }
 
         for (Status status : Status.values()) {

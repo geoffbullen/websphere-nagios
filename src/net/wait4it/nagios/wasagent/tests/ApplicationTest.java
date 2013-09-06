@@ -66,6 +66,9 @@ public class ApplicationTest extends TestUtils implements Test {
         // Message prefix
         String prefix = "HTTP session count: ";
 
+        // PMI stats
+        WSStats stats;
+
         // Performance data
         long liveCount;
 
@@ -75,43 +78,43 @@ public class ApplicationTest extends TestUtils implements Test {
         }
 
         try {
-            WSStats stats = proxy.getStats(WSSessionManagementStats.NAME);
-            WSStats[] stats1 = stats.getSubStats();
-            for (WSStats stat1 : stats1) {
-
-                // No statistics for WAS internal components
-                if (stat1.getName().matches("ibmasyncrsp#ibmasyncrsp.war")) {
-                    continue;
-                }
-
-                if (apps.containsKey("*") || apps.containsKey(stat1.getName())) {
-                    try {
-                        // PMI stats
-                        liveCount = ((WSRangeStatistic)stats.getStatistic(WSSessionManagementStats.LiveCount)).getCurrent();
-                    } catch (NullPointerException e) {
-                        throw new RuntimeException("invalid 'Servlet Session Manager' PMI settings.");
-                    }
-
-                    // Test output (Nagios performance data)
-                    output.add("app-" + stat1.getName() + "=" + liveCount);
-
-                    // Test return code
-                    thresholds = apps.get("*") != null ? apps.get("*") : apps.get(stat1.getName());
-                    warning = Long.parseLong(thresholds.split(",")[0]);
-                    critical = Long.parseLong(thresholds.split(",")[1]);
-                    testCode = checkResult(liveCount, critical, warning);               
-
-                    if (testCode == Status.WARNING.getCode() || testCode == Status.CRITICAL.getCode()) {
-                        message.add("'" + stat1.getName() + "' (" + liveCount + ")");
-                        code = (testCode > code) ? testCode : code;
-                    }
-                }
-            }
+            stats = proxy.getStats(WSSessionManagementStats.NAME);
         } catch (Exception e) {
             e.printStackTrace();
             result.setStatus(Status.UNKNOWN);
             result.setMessage(e.toString());
             return result;
+        }
+
+        WSStats[] stats1 = stats.getSubStats();
+        for (WSStats stat1 : stats1) {
+
+            // No statistics for WAS internal components
+            if (stat1.getName().matches("ibmasyncrsp#ibmasyncrsp.war")) {
+                continue;
+            }
+
+            if (apps.containsKey("*") || apps.containsKey(stat1.getName())) {
+                try {
+                    liveCount = ((WSRangeStatistic)stats.getStatistic(WSSessionManagementStats.LiveCount)).getCurrent();
+                } catch (NullPointerException e) {
+                    throw new RuntimeException("invalid 'Servlet Session Manager' PMI settings.");
+                }
+
+                // Test output (Nagios performance data)
+                output.add("app-" + stat1.getName() + "=" + liveCount);
+
+                // Test return code
+                thresholds = apps.get("*") != null ? apps.get("*") : apps.get(stat1.getName());
+                warning = Long.parseLong(thresholds.split(",")[0]);
+                critical = Long.parseLong(thresholds.split(",")[1]);
+                testCode = checkResult(liveCount, critical, warning);               
+
+                if (testCode == Status.WARNING.getCode() || testCode == Status.CRITICAL.getCode()) {
+                    message.add("'" + stat1.getName() + "' (" + liveCount + ")");
+                    code = (testCode > code) ? testCode : code;
+                }
+            }
         }
 
         for (Status status : Status.values()) {

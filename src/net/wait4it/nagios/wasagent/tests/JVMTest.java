@@ -57,6 +57,9 @@ public class JVMTest extends TestUtils implements Test {
         // Test thresholds
         long warning, critical;
 
+        // PMI stats
+        WSStats stats;
+
         // Performance data
         long maxMemory, heapSize, heapUsed, cpu;
 
@@ -66,35 +69,36 @@ public class JVMTest extends TestUtils implements Test {
         critical = Long.parseLong(paramsArray[2]);
 
         try {
-            WSStats stats = proxy.getStats(WSJVMStats.NAME);
-            try {
-                // PMI stats
-                maxMemory = ((WSBoundedRangeStatistic)stats.getStatistic(WSJVMStats.HeapSize)).getUpperBound() / 1024L;
-                heapSize = ((WSBoundedRangeStatistic)stats.getStatistic(WSJVMStats.HeapSize)).getCurrent() / 1024L;
-                heapUsed = ((WSCountStatistic)stats.getStatistic(WSJVMStats.UsedMemory)).getCount() / 1024L;
-                cpu = ((WSCountStatistic)stats.getStatistic(WSJVMStats.cpuUsage)).getCount();
-            } catch (NullPointerException e) {
-                throw new RuntimeException("invalid 'JVM Runtime' PMI settings.");
-            }
-
-            // Test output (Nagios performance data)
-            StringBuilder out = new StringBuilder();
-            out.append("jvm-heapSize=" + heapSize + "MB;;;0;" + maxMemory + " ");
-            out.append("jvm-heapUsed=" + heapUsed + "MB;;;0;" + maxMemory + " ");
-            out.append("jvm-cpu=" + cpu + "%;;;0;100");
-            result.setOutput(out.toString());
-
-            // Test return code
-            code = checkResult(heapUsed, maxMemory, critical, warning);
-
-            if (code == Status.WARNING.getCode() || code == Status.CRITICAL.getCode()) {
-                result.setMessage("memory used (" + heapUsed + "/" + maxMemory + ")");
-            }
+            stats = proxy.getStats(WSJVMStats.NAME);
         } catch (Exception e) {
             e.printStackTrace();
             result.setStatus(Status.UNKNOWN);
             result.setMessage(e.toString());
             return result;
+        }
+
+        try {
+            // Memory values are expressed as Megabytes
+            maxMemory = ((WSBoundedRangeStatistic)stats.getStatistic(WSJVMStats.HeapSize)).getUpperBound() / 1024L;
+            heapSize = ((WSBoundedRangeStatistic)stats.getStatistic(WSJVMStats.HeapSize)).getCurrent() / 1024L;
+            heapUsed = ((WSCountStatistic)stats.getStatistic(WSJVMStats.UsedMemory)).getCount() / 1024L;
+            cpu = ((WSCountStatistic)stats.getStatistic(WSJVMStats.cpuUsage)).getCount();
+        } catch (NullPointerException e) {
+            throw new RuntimeException("invalid 'JVM Runtime' PMI settings.");
+        }
+
+        // Test output (Nagios performance data)
+        StringBuilder out = new StringBuilder();
+        out.append("jvm-heapSize=" + heapSize + "MB;;;0;" + maxMemory + " ");
+        out.append("jvm-heapUsed=" + heapUsed + "MB;;;0;" + maxMemory + " ");
+        out.append("jvm-cpu=" + cpu + "%;;;0;100");
+        result.setOutput(out.toString());
+
+        // Test return code
+        code = checkResult(heapUsed, maxMemory, critical, warning);
+
+        if (code == Status.WARNING.getCode() || code == Status.CRITICAL.getCode()) {
+            result.setMessage("memory used (" + heapUsed + "/" + maxMemory + ")");
         }
 
         for (Status status : Status.values()) {

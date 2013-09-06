@@ -74,6 +74,9 @@ public class JDBCTest extends TestUtils implements Test {
         // Message prefix
         String prefix = "datasource active count: ";
 
+        // PMI stats
+        WSStats stats;
+
         // Performance data
         long currentPoolSize, maxPoolSize, freePoolSize, waitingCount, activeCount;
 
@@ -83,54 +86,54 @@ public class JDBCTest extends TestUtils implements Test {
         }
 
         try {
-            WSStats stats = proxy.getStats(WSJDBCConnectionPoolStats.NAME);
-            WSStats[] stats1 = stats.getSubStats(); // JDBC Provider level
-            for (WSStats stat1 : stats1) {
-                WSStats[] stats2 = stat1.getSubStats(); // DataSource level
-                for (WSStats stat2 : stats2) {
-
-                    // No statistics for WAS internal datasources
-                    if (stat2.getName().matches("jdbc/DefaultEJBTimerDataSource")) {
-                        continue;
-                    }
-
-                    if (datasources.containsKey("*") || datasources.containsKey(stat2.getName())) {
-                        try {
-                            // PMI stats
-                            currentPoolSize = ((WSBoundedRangeStatistic)stat2.getStatistic(WSJDBCConnectionPoolStats.PoolSize)).getCurrent();
-                            maxPoolSize = ((WSBoundedRangeStatistic)stat2.getStatistic(WSJDBCConnectionPoolStats.PoolSize)).getUpperBound();
-                            freePoolSize = ((WSBoundedRangeStatistic)stat2.getStatistic(WSJDBCConnectionPoolStats.FreePoolSize)).getCurrent();
-                            waitingCount = ((WSRangeStatistic)stat2.getStatistic(WSJDBCConnectionPoolStats.WaitingThreadCount)).getCurrent();
-                            activeCount = currentPoolSize - freePoolSize;
-                        } catch (NullPointerException e) {
-                            throw new RuntimeException("invalid 'JDBC Connection Pools' PMI settings.");
-                        }
-
-                        // Test output (Nagios performance data)
-                        StringBuilder out = new StringBuilder();
-                        out.append("jdbc-" + stat2.getName() + "-size=" + currentPoolSize + ";;;0;" + maxPoolSize + " ");
-                        out.append("jdbc-" + stat2.getName() + "-activeCount=" + activeCount + ";;;0;" + maxPoolSize + " ");
-                        out.append("jdbc-" + stat2.getName() + "-waitingThreadCount=" + waitingCount);
-                        output.add(out.toString());
-
-                        // Test return code
-                        thresholds = datasources.get("*") != null ? datasources.get("*") : datasources.get(stat2.getName());
-                        warning = Long.parseLong(thresholds.split(",")[0]);
-                        critical = Long.parseLong(thresholds.split(",")[1]);
-                        testCode = checkResult(activeCount, maxPoolSize, critical, warning);
-
-                        if (testCode == Status.WARNING.getCode() || testCode == Status.CRITICAL.getCode()) {
-                            message.add("'" + stat2.getName() + "' (" + activeCount + "/" + maxPoolSize + ")");
-                            code = (testCode > code) ? testCode : code;
-                        }
-                    }
-                }
-            }
+            stats = proxy.getStats(WSJDBCConnectionPoolStats.NAME);
         } catch (Exception e) {
             e.printStackTrace();
             result.setStatus(Status.UNKNOWN);
             result.setMessage(e.toString());
             return result;
+        }
+
+        WSStats[] stats1 = stats.getSubStats(); // JDBC Provider level
+        for (WSStats stat1 : stats1) {
+            WSStats[] stats2 = stat1.getSubStats(); // DataSource level
+            for (WSStats stat2 : stats2) {
+
+                // No statistics for WAS internal datasources
+                if (stat2.getName().matches("jdbc/DefaultEJBTimerDataSource")) {
+                    continue;
+                }
+
+                if (datasources.containsKey("*") || datasources.containsKey(stat2.getName())) {
+                    try {
+                        currentPoolSize = ((WSBoundedRangeStatistic)stat2.getStatistic(WSJDBCConnectionPoolStats.PoolSize)).getCurrent();
+                        maxPoolSize = ((WSBoundedRangeStatistic)stat2.getStatistic(WSJDBCConnectionPoolStats.PoolSize)).getUpperBound();
+                        freePoolSize = ((WSBoundedRangeStatistic)stat2.getStatistic(WSJDBCConnectionPoolStats.FreePoolSize)).getCurrent();
+                        waitingCount = ((WSRangeStatistic)stat2.getStatistic(WSJDBCConnectionPoolStats.WaitingThreadCount)).getCurrent();
+                        activeCount = currentPoolSize - freePoolSize;
+                    } catch (NullPointerException e) {
+                        throw new RuntimeException("invalid 'JDBC Connection Pools' PMI settings.");
+                    }
+
+                    // Test output (Nagios performance data)
+                    StringBuilder out = new StringBuilder();
+                    out.append("jdbc-" + stat2.getName() + "-size=" + currentPoolSize + ";;;0;" + maxPoolSize + " ");
+                    out.append("jdbc-" + stat2.getName() + "-activeCount=" + activeCount + ";;;0;" + maxPoolSize + " ");
+                    out.append("jdbc-" + stat2.getName() + "-waitingThreadCount=" + waitingCount);
+                    output.add(out.toString());
+
+                    // Test return code
+                    thresholds = datasources.get("*") != null ? datasources.get("*") : datasources.get(stat2.getName());
+                    warning = Long.parseLong(thresholds.split(",")[0]);
+                    critical = Long.parseLong(thresholds.split(",")[1]);
+                    testCode = checkResult(activeCount, maxPoolSize, critical, warning);
+
+                    if (testCode == Status.WARNING.getCode() || testCode == Status.CRITICAL.getCode()) {
+                        message.add("'" + stat2.getName() + "' (" + activeCount + "/" + maxPoolSize + ")");
+                        code = (testCode > code) ? testCode : code;
+                    }
+                }
+            }
         }
 
         for (Status status : Status.values()) {

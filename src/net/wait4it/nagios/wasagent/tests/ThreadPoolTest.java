@@ -85,7 +85,6 @@ public class ThreadPoolTest extends TestUtils implements Test {
             for (WSStats stat1 : stats1) {
                 if (pools.containsKey("*") || pools.containsKey(stat1.getName())) {
                     try {
-                        // PMI stats
                         currentPoolSize = ((WSBoundedRangeStatistic)stat1.getStatistic(WSThreadPoolStats.PoolSize)).getCurrent();
                         maxPoolSize = ((WSBoundedRangeStatistic)stat1.getStatistic(WSThreadPoolStats.PoolSize)).getUpperBound();
                         activeCount = ((WSBoundedRangeStatistic)stat1.getStatistic(WSThreadPoolStats.ActiveCount)).getCurrent();

@@ -74,6 +74,9 @@ public class ServletTest extends TestUtils implements Test {
         // Message prefix
         String prefix = "servlet response time: ";
 
+        // PMI stats
+        WSStats stats;
+
         // Performance data
         double serviceTime;
 
@@ -83,52 +86,51 @@ public class ServletTest extends TestUtils implements Test {
         }
 
         try {
-            WSStats stats = proxy.getStats(WSWebAppStats.NAME);
-
-            if (stats != null) {           
-                WSStats[] stats1 = stats.getSubStats(); // WEB module level
-                for (WSStats stat1 : stats1) {
-                    WSStats[] stats2 = stat1.getSubStats(); // Servlets module level
-                    for (WSStats stat2 : stats2) {
-                        WSStats[] stats3 = stat2.getSubStats(); // Servlet level 
-                        for (WSStats stat3 : stats3) {
-
-                            // No statistics for WAS internal components
-                            if (stat3.getName().matches("rspservlet")) {
-                                continue;
-                            }
-
-                            if (servlets.containsKey("*") || servlets.containsKey(stat3.getName())) {
-                                try {
-                                    // PMI stats
-                                    serviceTime = ((WSTimeStatistic)stat3.getStatistic(WSWebAppStats.ServletStats.ServiceTime)).getMean();
-                                } catch (NullPointerException e) {
-                                    throw new RuntimeException("invalid 'Web Applications' PMI settings.");
-                                }
-
-                                // Test output (Nagios performance data)
-                                output.add("servlet-" + stat3.getName() + "-serviceTime=" + DF.format(serviceTime));
-
-                                // Test return code
-                                thresholds = servlets.get("*") != null ? servlets.get("*") : servlets.get(stat3.getName());
-                                warning = Long.parseLong(thresholds.split(",")[0]);
-                                critical = Long.parseLong(thresholds.split(",")[1]);
-                                testCode = checkResult(Math.round(serviceTime), critical, warning);
-
-                                if (testCode == Status.WARNING.getCode() || testCode == Status.CRITICAL.getCode()) {
-                                    message.add("'" + stat3.getName() + "' (" + DF.format(serviceTime) + ")");
-                                    code = (testCode > code) ? testCode : code;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            stats = proxy.getStats(WSWebAppStats.NAME);
         } catch (Exception e) {
             e.printStackTrace();
             result.setStatus(Status.UNKNOWN);
             result.setMessage(e.toString());
             return result;
+        }
+
+        if (stats != null) {           
+            WSStats[] stats1 = stats.getSubStats(); // WEB module level
+            for (WSStats stat1 : stats1) {
+                WSStats[] stats2 = stat1.getSubStats(); // Servlets module level
+                for (WSStats stat2 : stats2) {
+                    WSStats[] stats3 = stat2.getSubStats(); // Servlet level 
+                    for (WSStats stat3 : stats3) {
+
+                        // No statistics for WAS internal components
+                        if (stat3.getName().matches("rspservlet")) {
+                            continue;
+                        }
+
+                        if (servlets.containsKey("*") || servlets.containsKey(stat3.getName())) {
+                            try {
+                                serviceTime = ((WSTimeStatistic)stat3.getStatistic(WSWebAppStats.ServletStats.ServiceTime)).getMean();
+                            } catch (NullPointerException e) {
+                                throw new RuntimeException("invalid 'Web Applications' PMI settings.");
+                            }
+
+                            // Test output (Nagios performance data)
+                            output.add("servlet-" + stat3.getName() + "-serviceTime=" + DF.format(serviceTime));
+
+                            // Test return code
+                            thresholds = servlets.get("*") != null ? servlets.get("*") : servlets.get(stat3.getName());
+                            warning = Long.parseLong(thresholds.split(",")[0]);
+                            critical = Long.parseLong(thresholds.split(",")[1]);
+                            testCode = checkResult(Math.round(serviceTime), critical, warning);
+
+                            if (testCode == Status.WARNING.getCode() || testCode == Status.CRITICAL.getCode()) {
+                                message.add("'" + stat3.getName() + "' (" + DF.format(serviceTime) + ")");
+                                code = (testCode > code) ? testCode : code;
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         for (Status status : Status.values()) {
