@@ -76,9 +76,12 @@ public class JDBCTest extends TestUtils implements Test {
 
         // PMI stats
         WSStats stats;
+        WSBoundedRangeStatistic ps;
+        WSBoundedRangeStatistic fps;
+        WSRangeStatistic wtc;
 
         // Performance data
-        long currentPoolSize, maxPoolSize, freePoolSize, waitingCount, activeCount;
+        long currentPoolSize, maxPoolSize, freePoolSize, waitingThreadCount, activeThreadCount;
 
         // Parses HTTP query params
         for (String s : Arrays.asList(params.split("\\|"))) {
@@ -105,12 +108,15 @@ public class JDBCTest extends TestUtils implements Test {
                 }
 
                 if (datasources.containsKey("*") || datasources.containsKey(stat2.getName())) {
+                    ps = (WSBoundedRangeStatistic)stat2.getStatistic(WSJDBCConnectionPoolStats.PoolSize);
+                    fps = (WSBoundedRangeStatistic)stat2.getStatistic(WSJDBCConnectionPoolStats.FreePoolSize);
+                    wtc = (WSRangeStatistic)stat2.getStatistic(WSJDBCConnectionPoolStats.WaitingThreadCount);
                     try {
-                        currentPoolSize = ((WSBoundedRangeStatistic)stat2.getStatistic(WSJDBCConnectionPoolStats.PoolSize)).getCurrent();
-                        maxPoolSize = ((WSBoundedRangeStatistic)stat2.getStatistic(WSJDBCConnectionPoolStats.PoolSize)).getUpperBound();
-                        freePoolSize = ((WSBoundedRangeStatistic)stat2.getStatistic(WSJDBCConnectionPoolStats.FreePoolSize)).getCurrent();
-                        waitingCount = ((WSRangeStatistic)stat2.getStatistic(WSJDBCConnectionPoolStats.WaitingThreadCount)).getCurrent();
-                        activeCount = currentPoolSize - freePoolSize;
+                        currentPoolSize = ps.getCurrent();
+                        maxPoolSize = ps.getUpperBound();
+                        freePoolSize = fps.getCurrent();
+                        waitingThreadCount = wtc.getCurrent();
+                        activeThreadCount = currentPoolSize - freePoolSize;
                     } catch (NullPointerException e) {
                         throw new RuntimeException("invalid 'JDBC Connection Pools' PMI settings.");
                     }
@@ -118,18 +124,18 @@ public class JDBCTest extends TestUtils implements Test {
                     // Test output (Nagios performance data)
                     StringBuilder out = new StringBuilder();
                     out.append("jdbc-" + stat2.getName() + "-size=" + currentPoolSize + ";;;0;" + maxPoolSize + " ");
-                    out.append("jdbc-" + stat2.getName() + "-activeCount=" + activeCount + ";;;0;" + maxPoolSize + " ");
-                    out.append("jdbc-" + stat2.getName() + "-waitingThreadCount=" + waitingCount);
+                    out.append("jdbc-" + stat2.getName() + "-activeThreadCount=" + activeThreadCount + ";;;0;" + maxPoolSize + " ");
+                    out.append("jdbc-" + stat2.getName() + "-waitingThreadCount=" + waitingThreadCount);
                     output.add(out.toString());
 
                     // Test return code
                     thresholds = datasources.get("*") != null ? datasources.get("*") : datasources.get(stat2.getName());
                     warning = Long.parseLong(thresholds.split(",")[0]);
                     critical = Long.parseLong(thresholds.split(",")[1]);
-                    testCode = checkResult(activeCount, maxPoolSize, critical, warning);
+                    testCode = checkResult(activeThreadCount, maxPoolSize, critical, warning);
 
                     if (testCode == Status.WARNING.getCode() || testCode == Status.CRITICAL.getCode()) {
-                        message.add("'" + stat2.getName() + "' (" + activeCount + "/" + maxPoolSize + ")");
+                        message.add("'" + stat2.getName() + "' (" + activeThreadCount + "/" + maxPoolSize + ")");
                         code = (testCode > code) ? testCode : code;
                     }
                 }

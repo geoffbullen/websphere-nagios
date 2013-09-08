@@ -59,6 +59,9 @@ public class JVMTest extends TestUtils implements Test {
 
         // PMI stats
         WSStats stats;
+        WSBoundedRangeStatistic hs;
+        WSCountStatistic um;
+        WSCountStatistic cu;
 
         // Performance data
         long maxMemory, heapSize, heapUsed, cpu;
@@ -77,12 +80,16 @@ public class JVMTest extends TestUtils implements Test {
             return result;
         }
 
+        hs = (WSBoundedRangeStatistic)stats.getStatistic(WSJVMStats.HeapSize);
+        um = (WSCountStatistic)stats.getStatistic(WSJVMStats.UsedMemory);
+        cu = (WSCountStatistic)stats.getStatistic(WSJVMStats.cpuUsage);
+
         try {
             // Memory values are expressed as Megabytes
-            maxMemory = ((WSBoundedRangeStatistic)stats.getStatistic(WSJVMStats.HeapSize)).getUpperBound() / 1024L;
-            heapSize = ((WSBoundedRangeStatistic)stats.getStatistic(WSJVMStats.HeapSize)).getCurrent() / 1024L;
-            heapUsed = ((WSCountStatistic)stats.getStatistic(WSJVMStats.UsedMemory)).getCount() / 1024L;
-            cpu = ((WSCountStatistic)stats.getStatistic(WSJVMStats.cpuUsage)).getCount();
+            maxMemory = hs.getUpperBound() / 1024L;
+            heapSize = hs.getCurrent() / 1024L;
+            heapUsed = um.getCount() / 1024L;
+            cpu = cu.getCount();
         } catch (NullPointerException e) {
             throw new RuntimeException("invalid 'JVM Runtime' PMI settings.");
         }

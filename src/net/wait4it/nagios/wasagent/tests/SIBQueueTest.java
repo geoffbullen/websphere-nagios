@@ -66,6 +66,9 @@ public class SIBQueueTest extends TestUtils implements Test {
         // Message prefix
         String prefix = "queue depth: ";
 
+        // Queue identifier
+        String identifier = "";
+
         // Performance data
         long depth;
 
@@ -77,7 +80,7 @@ public class SIBQueueTest extends TestUtils implements Test {
         try {
             Set<ObjectName> mbeans = proxy.getMBeans("WebSphere:*,type=SIBQueuePoint");
             for (ObjectName mbean : mbeans) {
-                String identifier = (String)proxy.getAttribute(mbean, "identifier");
+                identifier = (String)proxy.getAttribute(mbean, "identifier");
 
                 // No statistics for WAS internal components
                 if (identifier.matches("^_PSIMP.*||^_PTRM.*")) {

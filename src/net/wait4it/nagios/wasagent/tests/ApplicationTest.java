@@ -68,6 +68,7 @@ public class ApplicationTest extends TestUtils implements Test {
 
         // PMI stats
         WSStats stats;
+        WSRangeStatistic lc;
 
         // Performance data
         long liveCount;
@@ -95,8 +96,9 @@ public class ApplicationTest extends TestUtils implements Test {
             }
 
             if (apps.containsKey("*") || apps.containsKey(stat1.getName())) {
+                lc = (WSRangeStatistic)stats.getStatistic(WSSessionManagementStats.LiveCount);
                 try {
-                    liveCount = ((WSRangeStatistic)stats.getStatistic(WSSessionManagementStats.LiveCount)).getCurrent();
+                    liveCount = lc.getCurrent();
                 } catch (NullPointerException e) {
                     throw new RuntimeException("invalid 'Servlet Session Manager' PMI settings.");
                 }

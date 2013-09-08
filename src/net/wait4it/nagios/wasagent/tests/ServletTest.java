@@ -76,6 +76,7 @@ public class ServletTest extends TestUtils implements Test {
 
         // PMI stats
         WSStats stats;
+        WSTimeStatistic st;
 
         // Performance data
         double serviceTime;
@@ -108,8 +109,9 @@ public class ServletTest extends TestUtils implements Test {
                         }
 
                         if (servlets.containsKey("*") || servlets.containsKey(stat3.getName())) {
+                            st = (WSTimeStatistic)stat3.getStatistic(WSWebAppStats.ServletStats.ServiceTime);
                             try {
-                                serviceTime = ((WSTimeStatistic)stat3.getStatistic(WSWebAppStats.ServletStats.ServiceTime)).getMean();
+                                serviceTime = st.getMean();
                             } catch (NullPointerException e) {
                                 throw new RuntimeException("invalid 'Web Applications' PMI settings.");
                             }

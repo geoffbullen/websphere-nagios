@@ -50,6 +50,7 @@ public class JTATest extends TestUtils implements Test {
 
         // PMI stats
         WSStats stats;
+        WSCountStatistic ac;
 
         // Performance data
         long activeCount;
@@ -68,8 +69,10 @@ public class JTATest extends TestUtils implements Test {
             return result;
         }
 
+        ac = (WSCountStatistic)stats.getStatistic(WSJTAStats.ActiveCount);
+
         try {
-            activeCount = ((WSCountStatistic)stats.getStatistic(WSJTAStats.ActiveCount)).getCount();
+            activeCount = ac.getCount();
         } catch (NullPointerException e) {
             throw new RuntimeException("invalid 'Transaction Manager' PMI settings.");
         }
