@@ -96,7 +96,7 @@ public class ApplicationTest extends TestUtils implements Test {
             }
 
             if (apps.containsKey("*") || apps.containsKey(stat1.getName())) {
-                lc = (WSRangeStatistic)stats.getStatistic(WSSessionManagementStats.LiveCount);
+                lc = (WSRangeStatistic)stat1.getStatistic(WSSessionManagementStats.LiveCount);
                 try {
                     liveCount = lc.getCurrent();
                 } catch (NullPointerException e) {
