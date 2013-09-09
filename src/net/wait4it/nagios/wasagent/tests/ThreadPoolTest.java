@@ -121,6 +121,7 @@ public class ThreadPoolTest extends TestUtils implements Test {
                 warning = Long.parseLong(thresholds.split(",")[0]);
                 critical = Long.parseLong(thresholds.split(",")[1]);
                 testCode = checkResult(activeCount, maxPoolSize, critical, warning);
+
                 if (testCode == Status.WARNING.getCode() || testCode == Status.CRITICAL.getCode()) {
                     active.add("'" + stat1.getName() + "' (" + activeCount + "/" + maxPoolSize + ")");
                     code = (testCode > code) ? testCode : code;
@@ -133,6 +134,7 @@ public class ThreadPoolTest extends TestUtils implements Test {
                         hungCount = chtc.getCurrent();
                         out.append(" pool-" + stat1.getName() + "-hungCount=" + hungCount + ";;;0;" + maxPoolSize);
                         testCode = checkResult(hungCount, maxPoolSize, 20L, 10L);
+
                         if (testCode == Status.WARNING.getCode() || testCode == Status.CRITICAL.getCode()) {
                             hung.add("'" + stat1.getName() + "' (" + hungCount + "/" + maxPoolSize + ")");
                             code = (testCode > code) ? testCode : code;
