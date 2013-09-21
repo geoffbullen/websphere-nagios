@@ -131,7 +131,7 @@ public class WASClientProxy {
     public String getServerName() throws Exception {
         return (String)getAttribute(serverMBean, "name");
     }
-    
+
     /**
      * Gets the target application server version.
      * 

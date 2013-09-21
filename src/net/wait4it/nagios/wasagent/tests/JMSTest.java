@@ -111,45 +111,43 @@ public class JMSTest extends TestUtils implements Test {
             return result;
         }
 
-        if (stats != null) {
-            WSStats[] stats1 = stats.getSubStats(); // JMS provider level
-            for (WSStats stat1 : stats1) {
+        WSStats[] stats1 = stats.getSubStats(); // JMS provider level
+        for (WSStats stat1 : stats1) {
 
-                if (stat1.getName().equals("SIB JMS Resource Adapter") || stat1.getName().equals("WebSphere MQ JMS Provider")) {
-                    WSStats[] stats2 = stat1.getSubStats(); // JCA factory level                    
-                    for (WSStats stat2 : stats2) {
+            if (stat1.getName().equals("SIB JMS Resource Adapter") || stat1.getName().equals("WebSphere MQ JMS Provider")) {
+                WSStats[] stats2 = stat1.getSubStats(); // JCA factory level                    
+                for (WSStats stat2 : stats2) {
 
-                        if (factories.containsKey("*") || factories.containsKey(stat2.getName())) {
-                            ps = (WSBoundedRangeStatistic)stat2.getStatistic(WSJCAConnectionPoolStats.PoolSize);
-                            fps = (WSBoundedRangeStatistic)stat2.getStatistic(WSJCAConnectionPoolStats.PoolSize);
-                            wtc = (WSRangeStatistic)stat2.getStatistic(WSJCAConnectionPoolStats.WaitingThreadCount);
-                            try {
-                                currentPoolSize = ps.getCurrent();
-                                maxPoolSize = ps.getUpperBound();
-                                freePoolSize = fps.getCurrent();
-                                waitingThreadCount = wtc.getCurrent();
-                                activeThreadCount = currentPoolSize - freePoolSize;
-                            } catch (NullPointerException e) {
-                                throw new RuntimeException("invalid 'JCA Connection Pools' PMI settings.");
-                            }
+                    if (factories.containsKey("*") || factories.containsKey(stat2.getName())) {
+                        ps = (WSBoundedRangeStatistic)stat2.getStatistic(WSJCAConnectionPoolStats.PoolSize);
+                        fps = (WSBoundedRangeStatistic)stat2.getStatistic(WSJCAConnectionPoolStats.FreePoolSize);
+                        wtc = (WSRangeStatistic)stat2.getStatistic(WSJCAConnectionPoolStats.WaitingThreadCount);
+                        try {
+                            currentPoolSize = ps.getCurrent();
+                            maxPoolSize = ps.getUpperBound();
+                            freePoolSize = fps.getCurrent();
+                            waitingThreadCount = wtc.getCurrent();
+                            activeThreadCount = currentPoolSize - freePoolSize;
+                        } catch (NullPointerException e) {
+                            throw new RuntimeException("invalid 'JCA Connection Pools' PMI settings.");
+                        }
 
-                            // Test output (Nagios performance data)
-                            StringBuilder out = new StringBuilder();
-                            out.append("jms-" + stat2.getName() + "-size=" + currentPoolSize + ";;;0;" + maxPoolSize + " ");
-                            out.append("jms-" + stat2.getName() + "-activeThreadCount=" + activeThreadCount + ";;;0;" + maxPoolSize + " ");
-                            out.append("jms-" + stat2.getName() + "-waitingThreadCount=" + waitingThreadCount);
-                            output.add(out.toString());
+                        // Test output (Nagios performance data)
+                        StringBuilder out = new StringBuilder();
+                        out.append("jms-" + stat2.getName() + "-size=" + currentPoolSize + ";;;0;" + maxPoolSize + " ");
+                        out.append("jms-" + stat2.getName() + "-activeThreadCount=" + activeThreadCount + ";;;0;" + maxPoolSize + " ");
+                        out.append("jms-" + stat2.getName() + "-waitingThreadCount=" + waitingThreadCount);
+                        output.add(out.toString());
 
-                            // Test return code
-                            thresholds = factories.get("*") != null ? factories.get("*") : factories.get(stat2.getName());
-                            warning = Long.parseLong(thresholds.split(",")[0]);
-                            critical = Long.parseLong(thresholds.split(",")[1]);
-                            testCode = checkResult(activeThreadCount, maxPoolSize, critical, warning);
+                        // Test return code
+                        thresholds = factories.get("*") != null ? factories.get("*") : factories.get(stat2.getName());
+                        warning = Long.parseLong(thresholds.split(",")[0]);
+                        critical = Long.parseLong(thresholds.split(",")[1]);
+                        testCode = checkResult(activeThreadCount, maxPoolSize, critical, warning);
 
-                            if (testCode == Status.WARNING.getCode() || testCode == Status.CRITICAL.getCode()) {
-                                message.add("'" + stat2.getName() + "' (" + activeThreadCount + "/" + maxPoolSize + ")");
-                                code = (testCode > code) ? testCode : code;
-                            }
+                        if (testCode == Status.WARNING.getCode() || testCode == Status.CRITICAL.getCode()) {
+                            message.add("'" + stat2.getName() + "' (" + activeThreadCount + "/" + maxPoolSize + ")");
+                            code = (testCode > code) ? testCode : code;
                         }
                     }
                 }

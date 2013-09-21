@@ -95,40 +95,38 @@ public class ServletTest extends TestUtils implements Test {
             return result;
         }
 
-        if (stats != null) {           
-            WSStats[] stats1 = stats.getSubStats(); // WEB module level
-            for (WSStats stat1 : stats1) {
-                WSStats[] stats2 = stat1.getSubStats(); // Servlets module level
-                for (WSStats stat2 : stats2) {
-                    WSStats[] stats3 = stat2.getSubStats(); // Servlet level 
-                    for (WSStats stat3 : stats3) {
+        WSStats[] stats1 = stats.getSubStats(); // WEB module level
+        for (WSStats stat1 : stats1) {
+            WSStats[] stats2 = stat1.getSubStats(); // Servlets module level
+            for (WSStats stat2 : stats2) {
+                WSStats[] stats3 = stat2.getSubStats(); // Servlet level
+                for (WSStats stat3 : stats3) {
 
-                        // No statistics for WAS internal components
-                        if (stat3.getName().matches("rspservlet")) {
-                            continue;
+                    // No statistics for WAS internal components
+                    if (stat3.getName().matches("rspservlet")) {
+                        continue;
+                    }
+
+                    if (servlets.containsKey("*") || servlets.containsKey(stat3.getName())) {
+                        st = (WSTimeStatistic)stat3.getStatistic(WSWebAppStats.ServletStats.ServiceTime);
+                        try {
+                            serviceTime = st.getMean();
+                        } catch (NullPointerException e) {
+                            throw new RuntimeException("invalid 'Web Applications' PMI settings.");
                         }
 
-                        if (servlets.containsKey("*") || servlets.containsKey(stat3.getName())) {
-                            st = (WSTimeStatistic)stat3.getStatistic(WSWebAppStats.ServletStats.ServiceTime);
-                            try {
-                                serviceTime = st.getMean();
-                            } catch (NullPointerException e) {
-                                throw new RuntimeException("invalid 'Web Applications' PMI settings.");
-                            }
+                        // Test output (Nagios performance data)
+                        output.add("servlet-" + stat3.getName() + "-serviceTime=" + DF.format(serviceTime));
 
-                            // Test output (Nagios performance data)
-                            output.add("servlet-" + stat3.getName() + "-serviceTime=" + DF.format(serviceTime));
+                        // Test return code
+                        thresholds = servlets.get("*") != null ? servlets.get("*") : servlets.get(stat3.getName());
+                        warning = Long.parseLong(thresholds.split(",")[0]);
+                        critical = Long.parseLong(thresholds.split(",")[1]);
+                        testCode = checkResult(Math.round(serviceTime), critical, warning);
 
-                            // Test return code
-                            thresholds = servlets.get("*") != null ? servlets.get("*") : servlets.get(stat3.getName());
-                            warning = Long.parseLong(thresholds.split(",")[0]);
-                            critical = Long.parseLong(thresholds.split(",")[1]);
-                            testCode = checkResult(Math.round(serviceTime), critical, warning);
-
-                            if (testCode == Status.WARNING.getCode() || testCode == Status.CRITICAL.getCode()) {
-                                message.add("'" + stat3.getName() + "' (" + DF.format(serviceTime) + ")");
-                                code = (testCode > code) ? testCode : code;
-                            }
+                        if (testCode == Status.WARNING.getCode() || testCode == Status.CRITICAL.getCode()) {
+                            message.add("'" + stat3.getName() + "' (" + DF.format(serviceTime) + ")");
+                            code = (testCode > code) ? testCode : code;
                         }
                     }
                 }
