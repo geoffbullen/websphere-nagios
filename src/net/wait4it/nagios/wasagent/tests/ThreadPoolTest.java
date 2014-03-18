@@ -161,7 +161,7 @@ public class ThreadPoolTest extends TestUtils implements Test {
         }
 
         result.setOutput(formatOut(output));
-        result.setMessage(msg1 + (! msg1.equals("") && ! msg2.equals("") ? " - " + msg2 : msg2));
+        result.setMessage(msg1 + (! msg1.isEmpty() && ! msg2.isEmpty() ? " - " + msg2 : msg2));
 
         return result;
     }
